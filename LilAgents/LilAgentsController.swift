@@ -69,28 +69,37 @@ class LilAgentsController {
     private func getDockIconArea(screenWidth: CGFloat) -> (x: CGFloat, width: CGFloat) {
         let dockDefaults = UserDefaults(suiteName: "com.apple.dock")
         let tileSize = CGFloat(dockDefaults?.double(forKey: "tilesize") ?? 48)
-        let slotWidth = tileSize * 2.0
+        // Each dock slot is the icon + padding. The padding scales with tile size.
+        // At default 48pt: slot ≈ 58pt. At 37pt: slot ≈ 47pt. Roughly tileSize * 1.25.
+        let slotWidth = tileSize * 1.25
 
         let persistentApps = dockDefaults?.array(forKey: "persistent-apps")?.count ?? 0
         let persistentOthers = dockDefaults?.array(forKey: "persistent-others")?.count ?? 0
-        let recentApps = dockDefaults?.array(forKey: "recent-apps")?.count ?? 0
+
+        // Only count recent apps if show-recents is enabled
+        let showRecents = dockDefaults?.bool(forKey: "show-recents") ?? true
+        let recentApps = showRecents ? (dockDefaults?.array(forKey: "recent-apps")?.count ?? 0) : 0
         let totalIcons = persistentApps + persistentOthers + recentApps
 
         var dividers = 0
         if persistentApps > 0 && (persistentOthers > 0 || recentApps > 0) { dividers += 1 }
         if persistentOthers > 0 && recentApps > 0 { dividers += 1 }
+        // show-recents adds its own divider
+        if showRecents && recentApps > 0 { dividers += 1 }
 
-        let dividerWidth: CGFloat = 16.0
+        let dividerWidth: CGFloat = 12.0
         var dockWidth = slotWidth * CGFloat(totalIcons) + CGFloat(dividers) * dividerWidth
 
         let magnificationEnabled = dockDefaults?.bool(forKey: "magnification") ?? false
         if magnificationEnabled,
            let largeSize = dockDefaults?.object(forKey: "largesize") as? CGFloat {
-            let extraWidth = (largeSize - tileSize) * CGFloat(totalIcons) * 0.5
-            dockWidth += extraWidth
+            // Magnification only affects the hovered area; at rest the dock is normal size.
+            // Don't inflate the width — characters should stay within the at-rest bounds.
+            _ = largeSize
         }
 
-        dockWidth *= 1.1
+        // Small fudge factor for dock edge padding
+        dockWidth += 16.0
         let dockX = (screenWidth - dockWidth) / 2.0
         return (dockX, dockWidth)
     }

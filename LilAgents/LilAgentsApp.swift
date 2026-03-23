@@ -84,6 +84,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
+        let debugItem = NSMenuItem(title: "Debug Line", action: #selector(toggleDebug(_:)), keyEquivalent: "d")
+        debugItem.state = .off
+        menu.addItem(debugItem)
+
+        menu.addItem(NSMenuItem.separator())
+
         let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)), keyEquivalent: "")
         updateItem.target = updaterController
         menu.addItem(updateItem)
