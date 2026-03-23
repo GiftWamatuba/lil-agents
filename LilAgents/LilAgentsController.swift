@@ -99,7 +99,7 @@ class LilAgentsController {
         }
 
         // Small fudge factor for dock edge padding
-        dockWidth += 16.0
+        dockWidth *= 1.1
         let dockX = (screenWidth - dockWidth) / 2.0
         return (dockX, dockWidth)
     }
