@@ -33,59 +33,86 @@ class ClaudeSession {
             completion(cached)
             return
         }
-        // Use login shell to resolve both the claude path AND the full shell environment.
+        // Always capture the user's login shell environment first.
         // This is critical: Xcode's process environment has a minimal PATH that won't
-        // include ~/.claude/local/bin, /opt/homebrew/bin, nvm paths, etc.
-        // We capture the full env so the launched Claude process can find its dependencies.
+        // include ~/.local/bin, /opt/homebrew/bin, nvm paths, etc.
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        proc.arguments = ["-l", "-c", "which claude && echo '---ENV_SEPARATOR---' && env"]
+        // Use -i (interactive) AND -l (login) to ensure .zshrc and .zprofile are both loaded
+        proc.arguments = ["-l", "-i", "-c", "echo '---ENV_START---' && env && echo '---ENV_END---'"]
         let pipe = Pipe()
         proc.standardOutput = pipe
         proc.standardError = Pipe()
         proc.terminationHandler = { _ in
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let output = String(data: data, encoding: .utf8) ?? ""
             DispatchQueue.main.async {
-                let parts = output.components(separatedBy: "---ENV_SEPARATOR---")
-                let path = parts.first?.trimmingCharacters(in: .whitespacesAndNewlines)
-                if let path = path, !path.isEmpty {
-                    claudePath = path
-                    // Parse the env output into a dictionary
-                    if parts.count > 1 {
-                        var env: [String: String] = [:]
-                        let envString = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
-                        for line in envString.components(separatedBy: "\n") {
-                            if let eqRange = line.range(of: "=") {
-                                let key = String(line[line.startIndex..<eqRange.lowerBound])
-                                let value = String(line[eqRange.upperBound...])
-                                env[key] = value
-                            }
+                // Parse shell environment
+                if let startRange = output.range(of: "---ENV_START---\n"),
+                   let endRange = output.range(of: "\n---ENV_END---") {
+                    let envString = String(output[startRange.upperBound..<endRange.lowerBound])
+                    var env: [String: String] = [:]
+                    for line in envString.components(separatedBy: "\n") {
+                        if let eqRange = line.range(of: "=") {
+                            let key = String(line[line.startIndex..<eqRange.lowerBound])
+                            let value = String(line[eqRange.upperBound...])
+                            env[key] = value
                         }
-                        shellEnvironment = env
                     }
-                    completion(path)
-                } else {
-                    // Fallback: check common install locations directly
-                    let home = FileManager.default.homeDirectoryForCurrentUser.path
-                    let fallbacks = [
-                        "\(home)/.local/bin/claude",
-                        "\(home)/.claude/local/bin/claude",
-                        "/usr/local/bin/claude",
-                        "/opt/homebrew/bin/claude"
-                    ]
-                    for fallback in fallbacks {
-                        if FileManager.default.isExecutableFile(atPath: fallback) {
-                            claudePath = fallback
-                            completion(fallback)
+                    shellEnvironment = env
+                }
+
+                // Now find claude: check the shell PATH first, then fallback locations
+                let home = FileManager.default.homeDirectoryForCurrentUser.path
+                let searchPaths = [
+                    "\(home)/.local/bin/claude",
+                    "\(home)/.claude/local/bin/claude",
+                    "/usr/local/bin/claude",
+                    "/opt/homebrew/bin/claude"
+                ]
+
+                // Check if claude is in the captured shell PATH
+                if let shellPath = shellEnvironment?["PATH"] {
+                    for dir in shellPath.components(separatedBy: ":") {
+                        let candidate = "\(dir)/claude"
+                        if FileManager.default.isExecutableFile(atPath: candidate) {
+                            claudePath = candidate
+                            completion(candidate)
                             return
                         }
                     }
-                    completion(nil)
                 }
+
+                // Fallback: check common install locations directly
+                for fallback in searchPaths {
+                    if FileManager.default.isExecutableFile(atPath: fallback) {
+                        claudePath = fallback
+                        completion(fallback)
+                        return
+                    }
+                }
+
+                completion(nil)
             }
         }
-        do { try proc.run() } catch { completion(nil) }
+        do { try proc.run() } catch {
+            // If shell fails entirely, still try fallback paths
+            let home = FileManager.default.homeDirectoryForCurrentUser.path
+            let fallbacks = [
+                "\(home)/.local/bin/claude",
+                "\(home)/.claude/local/bin/claude",
+                "/usr/local/bin/claude",
+                "/opt/homebrew/bin/claude"
+            ]
+            for fallback in fallbacks {
+                if FileManager.default.isExecutableFile(atPath: fallback) {
+                    claudePath = fallback
+                    completion(fallback)
+                    return
+                }
+            }
+            completion(nil)
+        }
     }
 
     func start() {
@@ -114,6 +141,19 @@ class ClaudeSession {
         // Use the shell environment captured from the user's login shell, not Xcode's
         // process environment. Xcode strips PATH and other vars that Claude CLI needs.
         var env = ClaudeSession.shellEnvironment ?? ProcessInfo.processInfo.environment
+        // Ensure PATH always includes common locations even if shell capture failed
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let essentialPaths = [
+            "\(home)/.local/bin",
+            "\(home)/.local/share/claude/versions",
+            "/usr/local/bin",
+            "/opt/homebrew/bin"
+        ]
+        let currentPath = env["PATH"] ?? "/usr/bin:/bin"
+        let missingPaths = essentialPaths.filter { !currentPath.contains($0) }
+        if !missingPaths.isEmpty {
+            env["PATH"] = (missingPaths + [currentPath]).joined(separator: ":")
+        }
         env["TERM"] = "dumb"
         proc.environment = env
 
