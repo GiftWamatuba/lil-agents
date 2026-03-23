@@ -7,13 +7,26 @@
         <language>en</language>
         <!--
             To publish a new release:
-            1. Archive the app in Xcode (Product > Archive)
-            2. Export as .dmg or .zip
-            3. Sign: ./sign_update <path-to-zip>
-               (sign_update is in Sparkle's bin/ alongside generate_keys)
-            4. Add a new <item> below with the edSignature and length from sign_update
-            5. Upload the .zip/.dmg to GitHub Releases
-            6. Commit the updated appcast.xml and push
+            1. Build, sign, notarize, staple the app
+            2. Create zip: ditto -c -k - -keepParent LilAgents.app LilAgents-vX.Y.zip
+            3. Sign for Sparkle: sign_update LilAgents-vX.Y.zip
+            4. Add a new <item> below with the edSignature and length
+            5. Upload zip to GitHub Releases
+            6. Commit appcast.xml and push
         -->
+        <item>
+            <title>v1.0</title>
+            <description>First release of lil agents.</description>
+            <pubDate>Sun, 22 Mar 2026 23:35:00 -0700</pubDate>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/ryanstephen/lil-agents/releases/download/v1.0/LilAgents-v1.0.zip"
+                type="application/octet-stream"
+                sparkle:edSignature="og0d2VMDD9L1RIFbDKf3+HEtfHqNXD/lc/0nxz/cdjlLO2umh52anxRIuST38KNTXWgej9lNgjqOFo+3J70rCA=="
+                length="20129404"
+            />
+        </item>
     </channel>
 </rss>
