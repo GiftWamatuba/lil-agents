@@ -1,0 +1,19 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0">
+    <channel>
+        <title>lil agents</title>
+        <link>https://github.com/ryanstephen/lil-agents</link>
+        <description>lil agents update feed</description>
+        <language>en</language>
+        <!--
+            To publish a new release:
+            1. Archive the app in Xcode (Product > Archive)
+            2. Export as .dmg or .zip
+            3. Sign: ./sign_update <path-to-zip>
+               (sign_update is in Sparkle's bin/ alongside generate_keys)
+            4. Add a new <item> below with the edSignature and length from sign_update
+            5. Upload the .zip/.dmg to GitHub Releases
+            6. Commit the updated appcast.xml and push
+        -->
+    </channel>
+</rss>

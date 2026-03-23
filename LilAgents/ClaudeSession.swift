@@ -9,6 +9,7 @@ class ClaudeSession {
     private(set) var isRunning = false
     private(set) var isBusy = false  // true between send() and result
     private static var claudePath: String?
+    private static var shellEnvironment: [String: String]?
 
     var onText: ((String) -> Void)?
     var onError: ((String) -> Void)?
@@ -28,24 +29,58 @@ class ClaudeSession {
     // MARK: - Process Lifecycle
 
     static func resolveClaudePath(completion: @escaping (String?) -> Void) {
-        if let cached = claudePath {
+        if let cached = claudePath, shellEnvironment != nil {
             completion(cached)
             return
         }
+        // Use login shell to resolve both the claude path AND the full shell environment.
+        // This is critical: Xcode's process environment has a minimal PATH that won't
+        // include ~/.claude/local/bin, /opt/homebrew/bin, nvm paths, etc.
+        // We capture the full env so the launched Claude process can find its dependencies.
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        proc.arguments = ["-l", "-c", "which claude"]
+        proc.arguments = ["-l", "-c", "which claude && echo '---ENV_SEPARATOR---' && env"]
         let pipe = Pipe()
         proc.standardOutput = pipe
         proc.standardError = Pipe()
         proc.terminationHandler = { _ in
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             DispatchQueue.main.async {
+                let parts = output.components(separatedBy: "---ENV_SEPARATOR---")
+                let path = parts.first?.trimmingCharacters(in: .whitespacesAndNewlines)
                 if let path = path, !path.isEmpty {
                     claudePath = path
+                    // Parse the env output into a dictionary
+                    if parts.count > 1 {
+                        var env: [String: String] = [:]
+                        let envString = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+                        for line in envString.components(separatedBy: "\n") {
+                            if let eqRange = line.range(of: "=") {
+                                let key = String(line[line.startIndex..<eqRange.lowerBound])
+                                let value = String(line[eqRange.upperBound...])
+                                env[key] = value
+                            }
+                        }
+                        shellEnvironment = env
+                    }
                     completion(path)
                 } else {
+                    // Fallback: check common install locations directly
+                    let home = FileManager.default.homeDirectoryForCurrentUser.path
+                    let fallbacks = [
+                        "\(home)/.local/bin/claude",
+                        "\(home)/.claude/local/bin/claude",
+                        "/usr/local/bin/claude",
+                        "/opt/homebrew/bin/claude"
+                    ]
+                    for fallback in fallbacks {
+                        if FileManager.default.isExecutableFile(atPath: fallback) {
+                            claudePath = fallback
+                            completion(fallback)
+                            return
+                        }
+                    }
                     completion(nil)
                 }
             }
@@ -76,7 +111,9 @@ class ClaudeSession {
         ]
         proc.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser
 
-        var env = ProcessInfo.processInfo.environment
+        // Use the shell environment captured from the user's login shell, not Xcode's
+        // process environment. Xcode strips PATH and other vars that Claude CLI needs.
+        var env = ClaudeSession.shellEnvironment ?? ProcessInfo.processInfo.environment
         env["TERM"] = "dumb"
         proc.environment = env
 
