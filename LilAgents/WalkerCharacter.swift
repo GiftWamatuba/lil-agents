@@ -407,9 +407,9 @@ class WalkerCharacter {
     ]
 
     private var lastPhraseUpdate: CFTimeInterval = 0
-    private var currentPhrase = ""
-    private var completionBubbleExpiry: CFTimeInterval = 0
-    private var showingCompletion = false
+    var currentPhrase = ""
+    var completionBubbleExpiry: CFTimeInterval = 0
+    var showingCompletion = false
 
     private static let bubbleH: CGFloat = 26
     private var phraseAnimating = false
