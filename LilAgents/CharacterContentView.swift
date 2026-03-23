@@ -15,8 +15,12 @@ class CharacterContentView: NSView {
         // AVPlayerLayer is GPU-rendered so layer.render(in:) won't capture video pixels.
         // Use CGWindowListCreateImage to sample actual on-screen alpha at click point.
         let screenPoint = window?.convertPoint(toScreen: convert(localPoint, to: nil)) ?? .zero
-        guard let mainScreen = NSScreen.main else { return nil }
-        let flippedY = mainScreen.frame.height - screenPoint.y
+        // Use the full virtual display height for the CG coordinate flip, not just
+        // the main screen. NSScreen coordinates have origin at bottom-left of the
+        // primary display, while CG uses top-left. The primary screen's height is
+        // the correct basis for the flip across all monitors.
+        guard let primaryScreen = NSScreen.screens.first else { return nil }
+        let flippedY = primaryScreen.frame.height - screenPoint.y
 
         let captureRect = CGRect(x: screenPoint.x - 0.5, y: flippedY - 0.5, width: 1, height: 1)
         guard let windowID = window?.windowNumber, windowID > 0 else { return nil }

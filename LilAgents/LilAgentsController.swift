@@ -130,12 +130,31 @@ class LilAgentsController {
         return NSScreen.main
     }
 
+    /// The dock lives on the screen where visibleFrame.origin.y > frame.origin.y (bottom dock)
+    /// On screens without the dock, visibleFrame.origin.y == frame.origin.y
+    private func screenHasDock(_ screen: NSScreen) -> Bool {
+        return screen.visibleFrame.origin.y > screen.frame.origin.y
+    }
+
     func tick() {
         guard let screen = activeScreen else { return }
 
         let screenWidth = screen.frame.width
-        let (dockX, dockWidth) = getDockIconArea(screenWidth: screenWidth)
-        let dockTopY = screen.visibleFrame.origin.y
+        let dockX: CGFloat
+        let dockWidth: CGFloat
+        let dockTopY: CGFloat
+
+        if screenHasDock(screen) {
+            // Dock is on this screen — constrain to dock area
+            (dockX, dockWidth) = getDockIconArea(screenWidth: screenWidth)
+            dockTopY = screen.visibleFrame.origin.y
+        } else {
+            // No dock on this screen — use full screen width with small margin
+            let margin: CGFloat = 40.0
+            dockX = screen.frame.origin.x + margin
+            dockWidth = screenWidth - margin * 2
+            dockTopY = screen.frame.origin.y
+        }
 
         updateDebugLine(dockX: dockX, dockWidth: dockWidth, dockTopY: dockTopY)
 
