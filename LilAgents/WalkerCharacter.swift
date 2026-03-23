@@ -34,6 +34,7 @@ class WalkerCharacter {
     var goingRight = true
     var walkStartPos: CGFloat = 0.0
     var walkEndPos: CGFloat = 0.0
+    var currentTravelDistance: CGFloat = 500.0
 
     // Popover state
     var isIdleForPopover = false
@@ -557,7 +558,12 @@ class WalkerCharacter {
         }
 
         walkStartPos = positionProgress
-        let walkAmount = CGFloat.random(in: walkAmountRange)
+        // Walk a fixed pixel distance (~200-325px) regardless of screen width.
+        // Convert walkAmountRange (tuned for dock-width ~500px) to pixels using
+        // a reference width, then convert back to a fraction of actual travel distance.
+        let referenceWidth: CGFloat = 500.0
+        let walkPixels = CGFloat.random(in: walkAmountRange) * referenceWidth
+        let walkAmount = currentTravelDistance > 0 ? walkPixels / currentTravelDistance : 0.3
         if goingRight {
             walkEndPos = min(walkStartPos + walkAmount, 1.0)
         } else {
@@ -636,8 +642,9 @@ class WalkerCharacter {
     // MARK: - Frame Update
 
     func update(dockX: CGFloat, dockWidth: CGFloat, dockTopY: CGFloat) {
+        currentTravelDistance = max(dockWidth - displayWidth, 0)
         if isIdleForPopover {
-            let travelDistance = max(dockWidth - displayWidth, 0)
+            let travelDistance = currentTravelDistance
             let x = dockX + travelDistance * positionProgress + currentFlipCompensation
             let bottomPadding = displayHeight * 0.15
             let y = dockTopY - bottomPadding + yOffset
