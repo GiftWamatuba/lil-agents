@@ -118,8 +118,9 @@ class ClaudeSession {
     func start() {
         ClaudeSession.resolveClaudePath { [weak self] path in
             guard let self = self, let claudePath = path else {
-                self?.onError?("Claude CLI not found. Install it from https://claude.ai/download")
-                self?.history.append(Message(role: .error, text: "Claude CLI not found."))
+                let msg = "Claude CLI not found.\n\nTo install, run this in Terminal:\n  curl -fsSL https://claude.ai/install.sh | sh\n\nOr download from https://claude.ai/download"
+                self?.onError?(msg)
+                self?.history.append(Message(role: .error, text: msg))
                 return
             }
             self.launchProcess(claudePath: claudePath)
@@ -200,8 +201,9 @@ class ClaudeSession {
             errorPipe = errPipe
             isRunning = true
         } catch {
-            onError?("Failed to launch Claude: \(error.localizedDescription)")
-            history.append(Message(role: .error, text: "Failed to launch Claude."))
+            let msg = "Failed to launch Claude CLI.\n\nMake sure Claude Code is installed and up to date:\n  curl -fsSL https://claude.ai/install.sh | sh\n\nError: \(error.localizedDescription)"
+            onError?(msg)
+            history.append(Message(role: .error, text: msg))
         }
     }
 

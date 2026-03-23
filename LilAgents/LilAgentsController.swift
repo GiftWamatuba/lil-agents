@@ -5,6 +5,7 @@ class LilAgentsController {
     private var displayLink: CVDisplayLink?
     var debugWindow: NSWindow?
     var pinnedScreenIndex: Int = -1
+    private static let onboardingKey = "hasCompletedOnboarding"
 
     func start() {
         let char1 = WalkerCharacter(videoName: "walk-bruce-01")
@@ -42,6 +43,28 @@ class LilAgentsController {
 
         setupDebugLine()
         startDisplayLink()
+
+        if !UserDefaults.standard.bool(forKey: Self.onboardingKey) {
+            triggerOnboarding()
+        }
+    }
+
+    private func triggerOnboarding() {
+        guard let bruce = characters.first else { return }
+        bruce.isOnboarding = true
+        // Show "hi!" bubble after a short delay so the character is visible first
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            bruce.currentPhrase = "hi!"
+            bruce.showingCompletion = true
+            bruce.completionBubbleExpiry = CACurrentMediaTime() + 600 // stays until clicked
+            bruce.showBubble(text: "hi!", isCompletion: true)
+            bruce.playCompletionSound()
+        }
+    }
+
+    func completeOnboarding() {
+        UserDefaults.standard.set(true, forKey: Self.onboardingKey)
+        characters.forEach { $0.isOnboarding = false }
     }
 
     // MARK: - Debug

@@ -39,6 +39,9 @@ class WalkerCharacter {
     var walkStartPixel: CGFloat = 0.0
     var walkEndPixel: CGFloat = 0.0
 
+    // Onboarding
+    var isOnboarding = false
+
     // Popover state
     var isIdleForPopover = false
     var popoverWindow: NSWindow?
@@ -105,11 +108,71 @@ class WalkerCharacter {
     // MARK: - Click Handling & Popover
 
     func handleClick() {
+        if isOnboarding {
+            openOnboardingPopover()
+            return
+        }
         if isIdleForPopover {
             closePopover()
         } else {
             openPopover()
         }
+    }
+
+    private func openOnboardingPopover() {
+        showingCompletion = false
+        hideBubble()
+
+        isIdleForPopover = true
+        isWalking = false
+        isPaused = true
+        queuePlayer.pause()
+        queuePlayer.seek(to: .zero)
+
+        if popoverWindow == nil {
+            createPopoverWindow()
+        }
+
+        // Show static welcome message instead of Claude terminal
+        terminalView?.inputField.isEditable = false
+        terminalView?.inputField.placeholderString = ""
+        let welcome = """
+        hey! we're bruce and jazz — your lil dock agents.
+
+        click either of us to open a Claude AI chat. we'll walk around while you work and let you know when Claude's thinking.
+
+        check the menu bar icon (top right) for themes, sounds, and more options.
+
+        click anywhere outside to dismiss, then click us again to start chatting.
+        """
+        terminalView?.appendStreamingText(welcome)
+        terminalView?.endStreaming()
+
+        updatePopoverPosition()
+        popoverWindow?.orderFrontRegardless()
+
+        // Set up click-outside to dismiss and complete onboarding
+        clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { [weak self] _ in
+            self?.closeOnboarding()
+        }
+        escapeKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.keyCode == 53 { self?.closeOnboarding(); return nil }
+            return event
+        }
+    }
+
+    private func closeOnboarding() {
+        if let monitor = clickOutsideMonitor { NSEvent.removeMonitor(monitor); clickOutsideMonitor = nil }
+        if let monitor = escapeKeyMonitor { NSEvent.removeMonitor(monitor); escapeKeyMonitor = nil }
+        popoverWindow?.orderOut(nil)
+        popoverWindow = nil
+        terminalView = nil
+        isIdleForPopover = false
+        isOnboarding = false
+        isPaused = true
+        pauseEndTime = CACurrentMediaTime() + Double.random(in: 1.0...3.0)
+        queuePlayer.seek(to: .zero)
+        controller?.completeOnboarding()
     }
 
     func openPopover() {
