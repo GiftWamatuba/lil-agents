@@ -36,4 +36,4 @@ lil agents runs entirely on your Mac and sends no personal data anywhere.
 
 ## license
 
-Copyright 2026 Ryan Stephen. All rights reserved.
+MIT License. See [LICENSE](LICENSE) for details.
