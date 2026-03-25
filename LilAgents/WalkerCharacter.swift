@@ -46,13 +46,13 @@ class WalkerCharacter {
     var isIdleForPopover = false
     var popoverWindow: NSWindow?
     var terminalView: TerminalView?
-    var claudeSession: ClaudeSession?
+    var session: (any AgentSession)?
     var clickOutsideMonitor: Any?
     var escapeKeyMonitor: Any?
     var currentStreamingText = ""
     weak var controller: LilAgentsController?
     var themeOverride: PopoverTheme?
-    var isClaudeBusy: Bool { claudeSession?.isBusy ?? false }
+    var isAgentBusy: Bool { session?.isBusy ?? false }
     var thinkingBubbleWindow: NSWindow?
 
     init(videoName: String) {
@@ -193,18 +193,18 @@ class WalkerCharacter {
         showingCompletion = false
         hideBubble()
 
-        if claudeSession == nil {
-            let session = ClaudeSession()
-            claudeSession = session
-            wireSession(session)
-            session.start()
+        if session == nil {
+            let newSession = AgentProvider.current.createSession()
+            session = newSession
+            wireSession(newSession)
+            newSession.start()
         }
 
         if popoverWindow == nil {
             createPopoverWindow()
         }
 
-        if let terminal = terminalView, let session = claudeSession, !session.history.isEmpty {
+        if let terminal = terminalView, let session = session, !session.history.isEmpty {
             terminal.replayHistory(session.history)
         }
 
@@ -251,7 +251,7 @@ class WalkerCharacter {
             // Reset expiry so user gets the full 3s from now
             completionBubbleExpiry = CACurrentMediaTime() + 3.0
             showBubble(text: currentPhrase, isCompletion: true)
-        } else if isClaudeBusy {
+        } else if isAgentBusy {
             // Force a fresh phrase pick and show immediately
             currentPhrase = ""
             lastPhraseUpdate = 0
@@ -327,7 +327,7 @@ class WalkerCharacter {
         terminal.themeOverride = themeOverride
         terminal.autoresizingMask = [.width, .height]
         terminal.onSendMessage = { [weak self] message in
-            self?.claudeSession?.send(message: message)
+            self?.session?.send(message: message)
         }
         container.addSubview(terminal)
 
@@ -336,7 +336,7 @@ class WalkerCharacter {
         terminalView = terminal
     }
 
-    private func wireSession(_ session: ClaudeSession) {
+    private func wireSession(_ session: any AgentSession, providerName: String = AgentProvider.current.displayName) {
         session.onText = { [weak self] text in
             self?.currentStreamingText += text
             self?.terminalView?.appendStreamingText(text)
@@ -364,7 +364,7 @@ class WalkerCharacter {
 
         session.onProcessExit = { [weak self] in
             self?.terminalView?.endStreaming()
-            self?.terminalView?.appendError("Claude session ended.")
+            self?.terminalView?.appendError("\(providerName) session ended.")
         }
     }
 
@@ -432,7 +432,7 @@ class WalkerCharacter {
             return
         }
 
-        if isClaudeBusy && !isIdleForPopover {
+        if isAgentBusy && !isIdleForPopover {
             let oldPhrase = currentPhrase
             updateThinkingPhrase()
             if currentPhrase != oldPhrase && !oldPhrase.isEmpty && !phraseAnimating {
