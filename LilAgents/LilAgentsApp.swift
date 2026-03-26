@@ -24,7 +24,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        controller?.characters.forEach { $0.claudeSession?.terminate() }
+        controller?.characters.forEach { $0.session?.terminate() }
     }
 
     // MARK: - Menu Bar
@@ -50,6 +50,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let soundItem = NSMenuItem(title: "Sounds", action: #selector(toggleSounds(_:)), keyEquivalent: "")
         soundItem.state = .on
         menu.addItem(soundItem)
+
+        // Provider submenu
+        let providerItem = NSMenuItem(title: "Provider", action: nil, keyEquivalent: "")
+        let providerMenu = NSMenu()
+        for (i, provider) in AgentProvider.allCases.enumerated() {
+            let item = NSMenuItem(title: provider.displayName, action: #selector(switchProvider(_:)), keyEquivalent: "")
+            item.tag = i
+            item.state = provider == AgentProvider.current ? .on : .off
+            providerMenu.addItem(item)
+        }
+        providerItem.submenu = providerMenu
+        menu.addItem(providerItem)
 
         // Theme submenu
         let themeItem = NSMenuItem(title: "Style", action: nil, keyEquivalent: "")
@@ -117,7 +129,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             char.thinkingBubbleWindow = nil
             if wasOpen {
                 char.createPopoverWindow()
-                if let session = char.claudeSession, !session.history.isEmpty {
+                if let session = char.session, !session.history.isEmpty {
                     char.terminalView?.replayHistory(session.history)
                 }
                 char.updatePopoverPosition()
@@ -127,6 +139,34 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     char.popoverWindow?.makeFirstResponder(terminal.inputField)
                 }
             }
+        }
+    }
+
+    @objc func switchProvider(_ sender: NSMenuItem) {
+        let idx = sender.tag
+        let allProviders = AgentProvider.allCases
+        guard idx < allProviders.count else { return }
+        AgentProvider.current = allProviders[idx]
+
+        if let providerMenu = sender.menu {
+            for item in providerMenu.items {
+                item.state = item.tag == idx ? .on : .off
+            }
+        }
+
+        // Terminate existing sessions and clear UI so title/placeholder update
+        controller?.characters.forEach { char in
+            char.session?.terminate()
+            char.session = nil
+            if char.isIdleForPopover {
+                char.closePopover()
+            }
+            // Always clear popover/bubble so they rebuild with new provider title/placeholder
+            char.popoverWindow?.orderOut(nil)
+            char.popoverWindow = nil
+            char.terminalView = nil
+            char.thinkingBubbleWindow?.orderOut(nil)
+            char.thinkingBubbleWindow = nil
         }
     }
 

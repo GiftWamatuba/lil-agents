@@ -135,7 +135,7 @@ class TerminalView: NSView {
         paddedCell.fieldBackgroundColor = nil
         paddedCell.fieldCornerRadius = 0
         paddedCell.placeholderAttributedString = NSAttributedString(
-            string: "Ask Claude...",
+            string: AgentProvider.current.inputPlaceholder,
             attributes: [.font: t.font, .foregroundColor: t.textDim]
         )
         inputField.cell = paddedCell
@@ -243,7 +243,7 @@ class TerminalView: NSView {
         scrollToBottom()
     }
 
-    func replayHistory(_ messages: [ClaudeSession.Message]) {
+    func replayHistory(_ messages: [AgentMessage]) {
         let t = theme
         textView.textStorage?.setAttributedString(NSAttributedString(string: ""))
         for msg in messages {
