@@ -25,3 +25,13 @@ xcuserdata/
 *.dmg
 *.zip
 *.xcworkspace/xcshareddata/swiftpm/
+
+# Linux sprite cache (runtime extraction — not committed)
+.cache/
+
+# linux/sprites/ is intentionally committed (macOS-exported PNG frames)
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
