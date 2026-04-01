@@ -46,4 +46,7 @@ class ShellEnvironment:
         missing = [p for p in essential if p and p not in current]
         if missing:
             env['PATH'] = sep.join(missing + [current])
+
+        # Prevent AI CLIs from emitting terminal escape sequences.
+        env['TERM'] = 'dumb'
         return env

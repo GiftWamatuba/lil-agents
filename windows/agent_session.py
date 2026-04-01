@@ -65,6 +65,7 @@ class AgentSession:
         self.on_text = None
         self.on_error = None
         self.on_tool_use = None
+        self.on_tool_result = None
         self.on_session_ready = None
         self.on_turn_complete = None
         self.on_process_exit = None

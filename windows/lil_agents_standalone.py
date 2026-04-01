@@ -71,10 +71,12 @@ def _sprite_config(name):
     if name.lower() == 'jazz':
         return {'idle_frame': 0,
                 'walk_start': int(4.5  * _SPRITE_FPS),
-                'walk_end':   int(8.75 * _SPRITE_FPS)}
+                'walk_end':   int(8.75 * _SPRITE_FPS),
+                'y_offset': 1, 'flip_x_offset': -3}
     return     {'idle_frame': 0,
                 'walk_start': int(3.75 * _SPRITE_FPS),
-                'walk_end':   int(8.5  * _SPRITE_FPS)}
+                'walk_end':   int(8.5  * _SPRITE_FPS),
+                'y_offset': 3, 'flip_x_offset': 0}
 
 
 def _remove_black_bg(png_path, tolerance=18, feather=18):
@@ -197,12 +199,14 @@ class CharacterWindow:
 
         idx   = self._sprite_index % len(self._sprite_frames)
         frame = self._sprite_frames[idx].copy()
+        flip_x = 0
         if self.direction < 0:
-            frame = frame.transpose(PILImage.FLIP_LEFT_RIGHT)
+            frame  = frame.transpose(PILImage.FLIP_LEFT_RIGHT)
+            flip_x = self._sprite_cfg.get('flip_x_offset', 0)
 
         out = PILImage.new('RGB', (CHAR_WIDTH, WIN_HEIGHT), (1, 1, 1))
         r, g, b, a = frame.split()
-        out.paste(frame.convert('RGB'), (0, 0), mask=a)
+        out.paste(frame.convert('RGB'), (flip_x, 0), mask=a)
 
         photo       = ImageTk.PhotoImage(out)
         self._photo = photo
@@ -244,8 +248,9 @@ class CharacterWindow:
                 self._sprite_index = min(self._sprite_cfg['idle_frame'],
                                          len(self._sprite_frames) - 1)
 
+        y_offset = self._sprite_cfg.get('y_offset', 0)
         px = int(dock_x + self.position_progress * dock_width - CHAR_WIDTH / 2)
-        py = int(dock_y - CHAR_HEIGHT)
+        py = int(dock_y - CHAR_HEIGHT + y_offset)
         self._win.geometry(f'{CHAR_WIDTH}x{WIN_HEIGHT}+{px}+{py}')
         self._render()
 
