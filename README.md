@@ -14,6 +14,7 @@ Supports **Claude Code**, **OpenAI Codex**, and **GitHub Copilot** CLIs — swit
 |---|---|---|
 | **macOS** (Sonoma 14.0+) | Full support | Native Swift/AppKit app, dock-integrated |
 | **Linux** | Supported | Python/GTK3 app, walks above the taskbar |
+| **Windows** (10/11) | Supported | Python/tkinter app, walks above the taskbar |
 
 ---
 
@@ -137,6 +138,71 @@ gh extension install github/gh-copilot
 - Transparent windows require a running compositor. On bare X11 without one, characters will have an opaque background. On GNOME, KDE Plasma, and most modern desktops this works out of the box.
 - The system tray icon uses AppIndicator3 when available; otherwise falls back to GtkStatusIcon (which may appear differently depending on your desktop environment).
 - Characters walk above the workarea boundary reported by your window manager, which is usually directly above the taskbar.
+
+---
+
+## Windows
+
+The Windows version is a Python/tkinter application in the [`windows/`](windows/) directory. Characters walk above your taskbar using a transparent overlay window.
+
+### option A — pre-built .exe (no Python needed)
+
+1. Clone or download the repo
+2. Make sure sprites are extracted (see below), or have [ffmpeg](https://ffmpeg.org/download.html) in your PATH
+3. In the `windows/` folder, double-click **`build.bat`**
+4. Find `windows\dist\lil-agents.exe` — copy it anywhere and double-click to run
+
+> The `.exe` bundles everything (Python, Pillow, sprites). No install required on the target machine.
+
+### option B — run from source
+
+**Requirements:**
+- Python 3.11+
+- ffmpeg in PATH (for first-run sprite extraction from the bundled `.mov` files)
+
+**Install dependencies:**
+```cmd
+cd windows
+pip install pillow pystray numpy
+```
+
+**Run (characters only, no AI):**
+```cmd
+python lil_agents_standalone.py
+```
+
+**Run (with AI chat — requires a CLI installed):**
+```cmd
+python lil_agents.py
+```
+
+### installing CLIs on Windows
+
+**Claude Code**
+```powershell
+npm install -g @anthropic-ai/claude-code
+```
+
+**OpenAI Codex**
+```powershell
+npm install -g @openai/codex
+```
+
+**GitHub Copilot CLI**
+```powershell
+npm install -g @github/copilot-cli
+# or via the gh CLI:
+gh extension install github/gh-copilot
+```
+
+> All three require [Node.js](https://nodejs.org/) to be installed.
+
+### notes
+
+- On first run, ffmpeg extracts sprite frames from the `.mov` files into `.cache\windows-sprites\`. This takes ~30 seconds and only happens once.
+- The system tray icon requires `pystray` (`pip install pystray`). Without it, close the console window to quit.
+- Characters use per-pixel transparency via tkinter's `-transparentcolor`. This works on Windows 10 and 11 without any extra compositor.
+- Switch AI provider or theme from the system tray icon in the taskbar.
 
 ---
 

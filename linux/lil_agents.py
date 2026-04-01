@@ -289,7 +289,7 @@ class LilAgentsApp:
         if not item.get_active():
             return
         self.current_provider = provider
-        for session in self._sessions.values():
+        for session in list(self._sessions.values()):
             session.terminate()
         self._sessions.clear()
         for terminal in self._terminals.values():
@@ -300,7 +300,7 @@ class LilAgentsApp:
             self.current_theme = theme_key
 
     def _on_quit(self, _widget):
-        for session in self._sessions.values():
+        for session in list(self._sessions.values()):
             session.terminate()
         Gtk.main_quit()
 

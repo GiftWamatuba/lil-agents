@@ -66,6 +66,7 @@ pyinstaller --onefile --noconsole --name "lil-agents" ^
     --hidden-import PIL.ImageDraw ^
     --hidden-import pystray ^
     --hidden-import pystray._win32 ^
+    --hidden-import numpy ^
     lil_agents_standalone.py
 
 if errorlevel 1 (
