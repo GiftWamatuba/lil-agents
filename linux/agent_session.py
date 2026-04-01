@@ -185,6 +185,9 @@ class AgentSession:
         try:
             self.process.stdin.write(line)
             self.process.stdin.flush()
+        except BrokenPipeError:
+            self.is_running = False
+            self.is_busy = False
         except Exception as e:
             if self.on_error:
                 self.on_error(str(e))

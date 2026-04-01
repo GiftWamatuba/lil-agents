@@ -149,7 +149,11 @@ class TerminalWindow:
         self._drag_y = event.y_root - self._win.winfo_y()
 
     def _drag_move(self, event):
-        self._win.geometry(f'+{event.x_root - self._drag_x}+{event.y_root - self._drag_y}')
+        sw = self._win.winfo_screenwidth()
+        sh = self._win.winfo_screenheight()
+        x  = max(0, min(event.x_root - self._drag_x, sw - self.WIN_W))
+        y  = max(0, min(event.y_root - self._drag_y, sh - self.WIN_H))
+        self._win.geometry(f'+{x}+{y}')
 
     def _on_return(self, event):
         if event.state & 0x0001:
