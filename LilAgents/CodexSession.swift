@@ -1,4 +1,4 @@
-import Foundation
+i import Foundation
 
 class CodexSession: AgentSession {
     private var process: Process?
