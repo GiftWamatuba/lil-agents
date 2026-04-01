@@ -175,8 +175,10 @@ class TerminalWindow:
         if not self._win.winfo_viewable():
             mx = self._win.winfo_pointerx()
             my = self._win.winfo_pointery()
-            x  = max(0, mx - self.WIN_W // 2)
-            y  = max(0, my - self.WIN_H - 20)
+            sw = self._win.winfo_screenwidth()
+            sh = self._win.winfo_screenheight()
+            x  = max(0, min(mx - self.WIN_W // 2, sw - self.WIN_W))
+            y  = max(0, min(my - self.WIN_H - 20, sh - self.WIN_H))
             self._win.geometry(f'{self.WIN_W}x{self.WIN_H}+{x}+{y}')
         self._win.deiconify()
         self._win.lift()
@@ -188,17 +190,26 @@ class TerminalWindow:
 
     def append_text(self, text, tag='assistant'):
         def _do():
-            at_bottom = self._is_at_bottom()
-            t = self._text
-            t.configure(state='normal')
-            if tag == 'assistant':
-                self._append_assistant_markdown(text)
-            else:
-                t.insert('end', text, tag)
-            t.configure(state='disabled')
-            if at_bottom:
-                t.see('end')
-        self.root.after(0, _do)
+            try:
+                if not self._text or not self._text.winfo_exists():
+                    return
+                at_bottom = self._is_at_bottom()
+                t = self._text
+                t.configure(state='normal')
+                if tag == 'assistant':
+                    self._append_assistant_markdown(text)
+                else:
+                    t.insert('end', text, tag)
+                t.configure(state='disabled')
+                if at_bottom:
+                    t.see('end')
+            except Exception:
+                pass
+        try:
+            if self.root.winfo_exists():
+                self.root.after(0, _do)
+        except Exception:
+            pass
 
     def _is_at_bottom(self):
         try:
@@ -238,11 +249,18 @@ class TerminalWindow:
     def set_input_sensitive(self, sensitive):
         state = 'normal' if sensitive else 'disabled'
         def _do():
-            if self._input:
-                self._input.configure(state=state)
-            if self._send_btn:
-                self._send_btn.configure(state=state)
-        self.root.after(0, _do)
+            try:
+                if self._input and self._input.winfo_exists():
+                    self._input.configure(state=state)
+                if self._send_btn and self._send_btn.winfo_exists():
+                    self._send_btn.configure(state=state)
+            except Exception:
+                pass
+        try:
+            if self.root.winfo_exists():
+                self.root.after(0, _do)
+        except Exception:
+            pass
 
     def update_provider(self, provider_name, theme_name=None):
         self.provider_name = provider_name
@@ -251,4 +269,8 @@ class TerminalWindow:
         if self._header_label:
             fmt  = self.theme.get('title_format', 'uppercase')
             text = self._format_provider(provider_name, fmt)
-            self.root.after(0, lambda: self._header_label.configure(text=text))
+            try:
+                if self.root.winfo_exists():
+                    self.root.after(0, lambda: self._header_label.configure(text=text))
+            except Exception:
+                pass

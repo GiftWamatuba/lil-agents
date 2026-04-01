@@ -57,6 +57,14 @@ class LilAgentsApp:
         self._setup_tray()
         self.root.after(TICK_MS, self._tick)
 
+    def _ui(self, func):
+        """Schedule func on the tkinter thread, safe even if root has been destroyed."""
+        try:
+            if self.root.winfo_exists():
+                self.root.after(0, func)
+        except Exception:
+            pass
+
     def _dock_area(self):
         wx, wy, ww, wh = self._workarea
         margin = 40
@@ -97,7 +105,7 @@ class LilAgentsApp:
 
         def on_error(text):
             if terminal: terminal.append_text(f'Error: {text}\n', 'error')
-            if char: self.root.after(0, lambda: char.set_busy(False))
+            if char: self._ui(lambda: char.set_busy(False))
 
         def on_tool_use(name, _i):
             if terminal: terminal.append_text(f'  [{name}]\n', 'system')
@@ -112,21 +120,21 @@ class LilAgentsApp:
                 terminal.append_text('\n', 'assistant')
                 terminal.set_input_sensitive(True)
             if char:
-                self.root.after(0, lambda: char.set_busy(False))
-                self.root.after(0, lambda: char.show_bubble('done!', 3.0))
+                self._ui(lambda: char.set_busy(False))
+                self._ui(lambda: char.show_bubble('done!', 3.0))
 
         def on_process_exit():
             if terminal:
                 terminal.append_text('\n[session ended]\n', 'error')
                 terminal.set_input_sensitive(False)
-            if char: self.root.after(0, lambda: char.set_busy(False))
+            if char: self._ui(lambda: char.set_busy(False))
 
-        session.on_text          = lambda t:    self.root.after(0, lambda: on_text(t))
-        session.on_error         = lambda t:    self.root.after(0, lambda: on_error(t))
-        session.on_tool_use      = lambda n, i: self.root.after(0, lambda: on_tool_use(n, i))
-        session.on_session_ready = lambda:      self.root.after(0, on_session_ready)
-        session.on_turn_complete = lambda:      self.root.after(0, on_turn_complete)
-        session.on_process_exit  = lambda:      self.root.after(0, on_process_exit)
+        session.on_text          = lambda t:    self._ui(lambda: on_text(t))
+        session.on_error         = lambda t:    self._ui(lambda: on_error(t))
+        session.on_tool_use      = lambda n, i: self._ui(lambda: on_tool_use(n, i))
+        session.on_session_ready = lambda:      self._ui(on_session_ready)
+        session.on_turn_complete = lambda:      self._ui(on_turn_complete)
+        session.on_process_exit  = lambda:      self._ui(on_process_exit)
 
         self._sessions[character_name] = session
         session.start()
@@ -214,6 +222,11 @@ class LilAgentsApp:
         self.root.destroy()
 
     def _tick(self):
+        try:
+            if not self.root.winfo_exists():
+                return
+        except Exception:
+            return
         now = time.time()
         dt  = now - self._last_tick
         self._last_tick = now

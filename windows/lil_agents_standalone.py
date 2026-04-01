@@ -276,6 +276,11 @@ class LilAgentsApp:
         return wx + 40, ww - 80, wy + wh
 
     def _tick(self):
+        try:
+            if not self.root.winfo_exists():
+                return
+        except Exception:
+            return
         now = time.time()
         dt  = now - self._last_tick
         self._last_tick = now

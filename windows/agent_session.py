@@ -176,16 +176,31 @@ class AgentSession:
         else:
             line = message + '\n'
         try:
-            self.process.stdin.write(line)
-            self.process.stdin.flush()
+            if self.process.stdin:
+                self.process.stdin.write(line)
+                self.process.stdin.flush()
         except Exception as e:
             if self.on_error:
                 self.on_error(str(e))
 
     def terminate(self):
+        self.is_running = False
         if self.process:
             try:
                 self.process.terminate()
+                try:
+                    self.process.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    self.process.kill()
+                    self.process.wait()
             except Exception:
                 pass
-        self.is_running = False
+            finally:
+                for stream in (self.process.stdin,
+                               self.process.stdout,
+                               self.process.stderr):
+                    try:
+                        if stream:
+                            stream.close()
+                    except Exception:
+                        pass
